@@ -23,7 +23,7 @@ async function fetchPackageInfo(pkgName) {
       res.on('end', () => {
         try {
           resolve(JSON.parse(data));
-        } catch (e) {
+        } catch {
           resolve(null);
         }
       });
@@ -102,7 +102,7 @@ async function main() {
   try {
     console.log('Running npx expo install --fix...');
     execSync('npx expo install --fix -- --legacy-peer-deps --min-release-age=0', { stdio: 'inherit' });
-  } catch (e) {
+  } catch {
     console.warn('\nWarning: Expo alignment had some issues. Proceeding...');
   }
 
@@ -128,7 +128,7 @@ async function main() {
   console.log('Phase 4: Final sync...');
   try {
      execSync('npm install --legacy-peer-deps --min-release-age=0', { stdio: 'inherit' });
-  } catch (e) {
+  } catch {
      console.warn('Final sync warnings found.');
   }
 
