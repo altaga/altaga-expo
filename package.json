@@ -1,5 +1,9 @@
 {
   "name": "altaga-expo",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/altaga/altaga-expo.git"
+  },
   "main": "expo-router/entry",
   "version": "1.0.1",
   "scripts": {
