@@ -1,0 +1,5 @@
+.expo/
+.vscode/
+node_modules/
+.npmignore
+# .gitignore is usually fine to keep, but keeping this explicit ensures safety
