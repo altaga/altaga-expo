@@ -10,9 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      issues: write
-      pull-requests: write
-      id-token: write
     
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -21,7 +18,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Needed for tags and version bumping
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -59,7 +56,6 @@ jobs:
           [skip ci]"
           
           # Automatically bump the patch version (e.g. 1.0.1 -> 1.0.2)
-          # 'npm version' will automatically create a tag and commit
           npm version patch -m "chore(release): %s"
           
           git push origin HEAD
@@ -67,4 +63,6 @@ jobs:
 
       - name: Publish to NPM
         if: env.CHANGED == 'true'
-        run: npm publish --provenance
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
