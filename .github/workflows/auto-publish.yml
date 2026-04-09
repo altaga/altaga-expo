@@ -64,9 +64,20 @@ jobs:
       - name: Publish to NPM
         if: env.CHANGED == 'true'
         run: |
-          # Force the auth token directly into the npm config 
-          # to override any local .npmrc conflicts
-          npm config set //registry.npmjs.org/:_authToken $NODE_AUTH_TOKEN
+          # 1. Nuke any local .npmrc file that is sabotaging the auth
+          rm -f .npmrc 
+          echo "🧹 Deleted local .npmrc to prevent conflicts."
+          
+          # 2. Hard diagnostic check on the token
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "❌ CRITICAL ERROR: NODE_AUTH_TOKEN is completely empty!"
+            echo "Please check your GitHub Repository Secrets."
+            exit 1
+          else
+            echo "✅ Token is present (Length: ${#NODE_AUTH_TOKEN} characters)"
+          fi
+          
+          # 3. Publish using the environment variable mapped by setup-node
           npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
