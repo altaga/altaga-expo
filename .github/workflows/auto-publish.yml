@@ -63,6 +63,12 @@ jobs:
 
       - name: Publish to NPM
         if: env.CHANGED == 'true'
-        run: npm publish
+        run: |
+          if [ -z "${NPM_TOKEN}" ]; then
+            echo "Error: NPM_TOKEN secret is missing or empty!"
+            exit 1
+          fi
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
+          npm publish
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
