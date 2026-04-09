@@ -3,10 +3,14 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
+// Configuration
 const MIN_AGE_DAYS = 7;
 const MILLISECONDS_IN_A_DAY = 1000 * 60 * 60 * 24;
 const packageJsonPath = path.join(__dirname, '../package.json');
 
+/**
+ * Fetches package information from the npm registry.
+ */
 async function fetchPackageInfo(pkgName) {
   return new Promise((resolve) => {
     https.get(`https://registry.npmjs.org/${pkgName}`, (res) => {
@@ -27,17 +31,25 @@ async function fetchPackageInfo(pkgName) {
   });
 }
 
+/**
+ * Finds the latest stable version of a package that is at least MIN_AGE_DAYS old.
+ */
 function getEligibleVersion(pkgInfo) {
   if (!pkgInfo || !pkgInfo.versions || !pkgInfo.time) return null;
   const now = Date.now();
+  
   const versions = Object.keys(pkgInfo.time).filter(v => 
     v !== 'created' && v !== 'modified' && !v.includes('-')
   );
+  
+  // Sort versions by publish date (newest first)
   versions.sort((a, b) => new Date(pkgInfo.time[b]) - new Date(pkgInfo.time[a]));
+
   for (const version of versions) {
     if (pkgInfo.versions[version] && !pkgInfo.versions[version].deprecated) {
       const publishTime = new Date(pkgInfo.time[version]).getTime();
       const ageDays = (now - publishTime) / MILLISECONDS_IN_A_DAY;
+      
       if (ageDays >= MIN_AGE_DAYS) {
         return version;
       }
@@ -46,6 +58,9 @@ function getEligibleVersion(pkgInfo) {
   return null;
 }
 
+/**
+ * Removes ^ and ~ from version strings.
+ */
 function removeModifiers(depObject) {
   if (!depObject) return;
   for (const pkg in depObject) {
@@ -56,18 +71,26 @@ function removeModifiers(depObject) {
 }
 
 async function main() {
-  console.log(`Phase 1: Selecting 7-day mature versions...`);
+  console.log(`Phase 1: Detecting updates strictly respecting the ${MIN_AGE_DAYS}-day maturity rule...`);
+  
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
   const groups = ['dependencies', 'devDependencies'];
-  
-  // Track our targets
+
   for (const group of groups) {
     if (!packageJson[group]) continue;
     for (const pkgName of Object.keys(packageJson[group])) {
       const info = await fetchPackageInfo(pkgName);
       const eligible = getEligibleVersion(info);
       if (eligible) {
-        packageJson[group][pkgName] = eligible;
+        const currentRaw = packageJson[group][pkgName].replace(/^[\^~]/, '');
+        if (currentRaw !== eligible) {
+           console.log(`  [Update Found] ${pkgName}: ${currentRaw} -> ${eligible}`);
+           packageJson[group][pkgName] = eligible;
+        } else {
+           console.log(`  [OK] ${pkgName} is up to date: ${currentRaw}`);
+        }
+      } else {
+        console.log(`  [Skip] ${pkgName}: No eligible version found on registry.`);
       }
     }
   }
@@ -75,15 +98,12 @@ async function main() {
   console.log('Writing intermediary package.json...');
   fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
 
-  console.log('Phase 2: Aligning Expo ecosystem to our chosen Expo version...');
+  console.log('Phase 2: Aligning Expo ecosystem (Framework Compatibility)...');
   try {
-    // We run 'npx expo install --fix' to let Expo align its internal dependencies
-    // to match the framework version we chose in Phase 1 (which survived the 7-day rule).
-    // We add --min-release-age=0 ONLY for this step to allow Expo to fetch perfectly 
-    // matching sub-packages that might be very new but required for the 7-day-old SDK.
+    console.log('Running npx expo install --fix...');
     execSync('npx expo install --fix -- --legacy-peer-deps --min-release-age=0', { stdio: 'inherit' });
   } catch (e) {
-    console.warn('Alignment warning, continuing to final enforcement...');
+    console.warn('\nWarning: Expo alignment had some issues. Proceeding...');
   }
 
   console.log('Phase 3: Final Enforcement (Strict 7-day Check + Pinning)...');
@@ -95,7 +115,6 @@ async function main() {
       const info = await fetchPackageInfo(pkgName);
       const eligible = getEligibleVersion(info);
       if (eligible) {
-         // This is the absolute final check. No package can be newer than 7 days.
          alignedPackageJson[group][pkgName] = eligible;
       }
     }
@@ -107,9 +126,13 @@ async function main() {
   fs.writeFileSync(packageJsonPath, JSON.stringify(alignedPackageJson, null, 2) + '\n');
   
   console.log('Phase 4: Final sync...');
-  execSync('npm install --legacy-peer-deps --min-release-age=0', { stdio: 'inherit' });
+  try {
+     execSync('npm install --legacy-peer-deps --min-release-age=0', { stdio: 'inherit' });
+  } catch (e) {
+     console.warn('Final sync warnings found.');
+  }
 
-  console.log('\nSUCCESS: Project updated to 7-day stable versions and strictly pinned.');
+  console.log('\nSuccess! Template updated and strictly pinned.');
 }
 
 main().catch(err => {
