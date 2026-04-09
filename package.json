@@ -22,7 +22,7 @@
     "@react-navigation/elements": "2.9.14",
     "@react-navigation/native": "7.2.2",
     "buffer": "6.0.3",
-    "expo": "55.0.12",
+    "expo": "55.0.9",
     "expo-constants": "55.0.9",
     "expo-font": "55.0.4",
     "expo-haptics": "55.0.9",
