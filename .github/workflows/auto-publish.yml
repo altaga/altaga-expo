@@ -9,8 +9,9 @@ jobs:
   update-and-publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Need to commit back to the repo
-      packages: write
+      contents: write
+      issues: write
+      pull-requests: write
       id-token: write
     
     env:
@@ -26,7 +27,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-          registry-url: 'https://registry.npmjs.org/'
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Configure Git User
         run: |
@@ -66,4 +67,4 @@ jobs:
 
       - name: Publish to NPM
         if: env.CHANGED == 'true'
-        run: npm publish --access public --provenance
+        run: npm publish --provenance
