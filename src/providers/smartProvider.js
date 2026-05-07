@@ -10,8 +10,9 @@ import React, {
 import { Dimensions, PixelRatio, Platform, View } from "react-native";
 import { Toaster } from "react-native-sonner";
 
+// DONT CHANGE THIS VALUES (Its fixed)
 const frameWidthRatio = 0.4566; 
-const frameHeightRatio = 0.9726;
+const frameHeightRatio = 0.9726;  
 
 // 1. Create the Context
 const SmartSizeContext = createContext({
