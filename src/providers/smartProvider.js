@@ -1,4 +1,4 @@
-import frame from "../assets/frame.png";
+import frame from "../assets/images/frame.png";
 import { Image } from "expo-image";
 import React, {
   createContext,
@@ -8,7 +8,10 @@ import React, {
   useState,
 } from "react";
 import { Dimensions, PixelRatio, Platform, View } from "react-native";
-import ToastManager from "toastify-react-native";
+import { Toaster } from "react-native-sonner";
+
+const frameWidthRatio = 0.4566; 
+const frameHeightRatio = 0.9726;
 
 // 1. Create the Context
 const SmartSizeContext = createContext({
@@ -49,8 +52,8 @@ export default function SmartProvider({ children }) {
       width = windowDimensions.width;
       height = windowDimensions.height;
     } else {
-      width = frameSize.height / 2.3179;
-      height = frameSize.height * 0.7668;
+      width = frameSize.height * frameWidthRatio;
+      height = frameSize.height * frameHeightRatio; 
     }
 
     // Scale primarily based on width to avoid height-distortion on vertical screens.
@@ -84,20 +87,37 @@ export default function SmartProvider({ children }) {
     });
   };
 
+  const toasterOptions = {
+    toastOptions: {
+      style: {
+        borderRadius: 0,
+        borderWidth: 2,
+        borderColor: "#000000",
+        backgroundColor: "#F9F9F6",
+        padding: 12,
+        // Hard shadows for brutalist look
+        shadowColor: "#000000",
+        shadowOffset: { width: 4, height: 4 },
+        shadowOpacity: 1,
+        shadowRadius: 0,
+        elevation: 4,
+      },
+      titleStyle: {
+        color: "#000000",
+        fontWeight: "700",
+        fontSize: internalSize.normalize(14),
+      },
+      descriptionStyle: {
+        color: "#000000",
+        fontSize: internalSize.normalize(12),
+      },
+    },
+  };
+
   return (
     <SmartSizeContext.Provider value={internalSize}>
       {isWebMobileView ? (
-        <React.Fragment>
-          <Image
-            source={frame}
-            onLayout={handleLayout}
-            contentFit="contain"
-            style={{
-              width: "auto",
-              height: windowDimensions.height,
-              backgroundColor: "black",
-            }}
-          />
+        <View style={{ flex: 1, backgroundColor: "black", justifyContent: "center", alignItems: "center" }}>
           <View
             style={{
               position: "absolute",
@@ -105,26 +125,56 @@ export default function SmartProvider({ children }) {
               height: `100%`,
               alignSelf: "center",
               justifyContent: "center",
+              backgroundColor: "black",
             }}
           >
             <View
               style={{
                 width: internalSize.width,
-                height: "76.68%",
+                height: `${frameHeightRatio * 100}%`,
                 alignSelf: "center",
                 justifyContent: "center",
+                overflow: "hidden",
+                paddingVertical: 20,
               }}
             >
               {children}
-              <ToastManager style={{ width: internalSize.width }} />
+              <Toaster
+                {...toasterOptions}
+                containerStyle={{
+                  width: internalSize.width * 0.9,
+                  alignSelf: "center",
+                }}
+              />
             </View>
+             <Image
+            source={frame}
+            onLayout={handleLayout}
+            contentFit="contain"
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              zIndex: 10,
+              backgroundColor: "transparent",
+            }}
+          />
           </View>
-        </React.Fragment>
-      ) : (
-        <View style={{ flex: 1, backgroundColor: "black" }}>
-          {children}
-          <ToastManager />
         </View>
+      ) : (
+          <View style={{ flex: 1, backgroundColor: "black" }}>
+            {children}
+            <Toaster
+              {...toasterOptions}
+              containerStyle={{
+                width: internalSize.width * 0.9,
+                alignSelf: "center",
+              }}
+            />
+          </View>
       )}
     </SmartSizeContext.Provider>
   );
