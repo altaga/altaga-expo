@@ -1,4 +1,4 @@
-import frame from "../assets/images/frame.png";
+import frame from "../assets/frame.png";
 import { Image } from "expo-image";
 import React, {
   createContext,
