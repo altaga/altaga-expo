@@ -70,6 +70,34 @@ function removeModifiers(depObject) {
   }
 }
 
+const EXPO_SDK_55_MAP = {
+  "expo": "55.0.24",
+  "expo-constants": "55.0.16",
+  "expo-font": "55.0.7",
+  "expo-haptics": "55.0.3",
+  "expo-image": "55.0.9",
+  "expo-linking": "55.0.14",
+  "expo-router": "55.0.13",
+  "expo-secure-store": "55.0.13",
+  "expo-splash-screen": "55.0.19",
+  "expo-status-bar": "55.0.5",
+  "expo-symbols": "55.0.7",
+  "expo-system-ui": "55.0.16",
+  "expo-web-browser": "55.0.14",
+  "react": "19.2.0",
+  "react-dom": "19.2.0",
+  "react-native": "0.83.6",
+  "react-native-gesture-handler": "2.30.0",
+  "react-native-reanimated": "4.2.1",
+  "react-native-safe-area-context": "5.6.2",
+  "react-native-screens": "4.23.0",
+  "react-native-sonner": "0.2.0",
+  "react-native-web": "0.21.2",
+  "react-native-worklets": "0.7.4",
+  "eslint-config-expo": "55.0.1",
+  "typescript": "5.9.2"
+};
+
 async function main() {
   console.log(`Phase 1: Detecting updates strictly respecting the ${MIN_AGE_DAYS}-day maturity rule...`);
   
@@ -79,6 +107,18 @@ async function main() {
   for (const group of groups) {
     if (!packageJson[group]) continue;
     for (const pkgName of Object.keys(packageJson[group])) {
+      if (EXPO_SDK_55_MAP[pkgName]) {
+        const targetVersion = EXPO_SDK_55_MAP[pkgName];
+        const currentRaw = packageJson[group][pkgName].replace(/^[\^~]/, '');
+        if (currentRaw !== targetVersion) {
+          console.log(`  [Expo SDK 55 Align] ${pkgName}: ${currentRaw} -> ${targetVersion}`);
+          packageJson[group][pkgName] = targetVersion;
+        } else {
+          console.log(`  [OK] ${pkgName} is already aligned: ${currentRaw}`);
+        }
+        continue;
+      }
+      
       const info = await fetchPackageInfo(pkgName);
       const eligible = getEligibleVersion(info);
       if (eligible) {
@@ -95,41 +135,19 @@ async function main() {
     }
   }
 
-  console.log('Writing intermediary package.json...');
+  console.log('Writing package.json...');
+  
+  // Pin everything (remove modifiers)
+  removeModifiers(packageJson.dependencies);
+  removeModifiers(packageJson.devDependencies);
+  
   fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
 
-  console.log('Phase 2: Aligning Expo ecosystem (Framework Compatibility)...');
+  console.log('Phase 2: Syncing dependencies...');
   try {
-    console.log('Running npx expo install --fix...');
-    execSync('npx expo install --fix -- --legacy-peer-deps --min-release-age=0', { stdio: 'inherit' });
+    execSync('npm install', { stdio: 'inherit' });
   } catch {
-    console.warn('\nWarning: Expo alignment had some issues. Proceeding...');
-  }
-
-  console.log('Phase 3: Final Enforcement (Strict 7-day Check + Pinning)...');
-  const alignedPackageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-  
-  for (const group of groups) {
-    if (!alignedPackageJson[group]) continue;
-    for (const pkgName of Object.keys(alignedPackageJson[group])) {
-      const info = await fetchPackageInfo(pkgName);
-      const eligible = getEligibleVersion(info);
-      if (eligible) {
-         alignedPackageJson[group][pkgName] = eligible;
-      }
-    }
-  }
-
-  // Pin everything
-  removeModifiers(alignedPackageJson.dependencies);
-  removeModifiers(alignedPackageJson.devDependencies);
-  fs.writeFileSync(packageJsonPath, JSON.stringify(alignedPackageJson, null, 2) + '\n');
-  
-  console.log('Phase 4: Final sync...');
-  try {
-     execSync('npm install --legacy-peer-deps --min-release-age=0', { stdio: 'inherit' });
-  } catch {
-     console.warn('Final sync warnings found.');
+    console.warn('\nWarning: Dependency synchronization had some issues. Proceeding...');
   }
 
   console.log('\nSuccess! Template updated and strictly pinned.');

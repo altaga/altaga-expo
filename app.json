@@ -7,7 +7,6 @@
     "icon": "./src/assets/logo.png",
     "scheme": "altagaexpo",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
@@ -18,7 +17,6 @@
         "backgroundImage": "./src/assets/logo.png",
         "monochromeImage": "./src/assets/logo.png"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
