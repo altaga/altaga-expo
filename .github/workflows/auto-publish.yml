@@ -39,21 +39,9 @@ jobs:
       - name: Run Update Script
         run: node scripts/update-packages.js
 
-      - name: Check for Changes
-        id: check_changes
-        run: |
-          if [ -n "$(git status --porcelain package.json)" ]; then
-            echo "CHANGED=true" >> $GITHUB_ENV
-          else
-            echo "CHANGED=false" >> $GITHUB_ENV
-            echo "No package changes detected. Skipping publish."
-          fi
-
       - name: Commit, Version Bump, and Push
-        if: env.CHANGED == 'true'
         run: |
           git add package.json package-lock.json
-          git commit -m "chore(deps): update template dependencies and pin exact versions [skip ci]"
           
           # Automatically bump the patch version
           npm version patch -m "chore(release): %s"
@@ -62,7 +50,6 @@ jobs:
           git push origin --tags
 
       - name: Publish to NPM
-        if: env.CHANGED == 'true'
         run: |
           # 1. Nuke any local .npmrc file that is sabotaging the auth
           rm -f .npmrc 
