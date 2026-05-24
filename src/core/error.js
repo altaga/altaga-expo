@@ -1,6 +1,8 @@
 if (typeof window !== "undefined") {
   // Fill this with your own ignore patterns
   const ignorePatterns = [
+    "shadow*",
+    "pointerevents",
   ];
 
   const shouldIgnore = (...args) => {

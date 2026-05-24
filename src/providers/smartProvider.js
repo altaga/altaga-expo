@@ -97,11 +97,18 @@ export default function SmartProvider({ children }) {
         backgroundColor: "#F9F9F6",
         padding: 12,
         // Hard shadows for brutalist look
-        shadowColor: "#000000",
-        shadowOffset: { width: 4, height: 4 },
-        shadowOpacity: 1,
-        shadowRadius: 0,
-        elevation: 4,
+        ...Platform.select({
+          web: {
+            boxShadow: "4px 4px 0px #000000",
+          },
+          default: {
+            shadowColor: "#000000",
+            shadowOffset: { width: 4, height: 4 },
+            shadowOpacity: 1,
+            shadowRadius: 0,
+            elevation: 4,
+          },
+        }),
       },
       titleStyle: {
         color: "#000000",
@@ -152,7 +159,6 @@ export default function SmartProvider({ children }) {
             source={frame}
             onLayout={handleLayout}
             contentFit="contain"
-            pointerEvents="none"
             style={{
               position: "absolute",
               top: 0,
@@ -161,6 +167,7 @@ export default function SmartProvider({ children }) {
               height: "100%",
               zIndex: 10,
               backgroundColor: "transparent",
+              pointerEvents: "none",
             }}
           />
           </View>

@@ -6,28 +6,49 @@ import ContextModule from "./contextModule";
 export default function ContextLoader() {
   const context = useContext(ContextModule);
   const checkStarter = useCallback(async () => {
-    //await nukeStorage(); // for testing
-
-    const nonSensitiveData = await getAsyncStorageValue("NONSENSITIVEDATA"); // Check if the app is started for the first time
-
-    if (nonSensitiveData === null) {
-      context.setValue({ starter: true });
+    if (context.value && context.value.starter) {
       return;
     }
+    try {
+      //await nukeStorage(); // for testing
+      const nonSensitiveData = await getAsyncStorageValue("NONSENSITIVEDATA"); // Check if the app is started for the first time
 
-    const schema = await AsyncStorage.getItem("General");
-    const isConsistent =
-      Object.keys(context.value).length ===
-      Object.keys(JSON.parse(schema)).length;
+      if (nonSensitiveData === null) {
+        context.setValue({ starter: true });
+        return;
+      }
 
-    if (isConsistent) {
-      console.log("Schema Match, using stored data"); // Avoiding data loss
-      context.setValue({
-        nonSensitiveData,
-        starter: true,
-      });
-    } else {
-      console.log("Schema Mismatch, using default data");
+      const schema = await AsyncStorage.getItem("General");
+      if (!schema) {
+        console.log("No schema found, using default state");
+        context.setValue({
+          ...context.value,
+          starter: true,
+        });
+        return;
+      }
+
+      const parsedSchema = JSON.parse(schema);
+      const isConsistent =
+        parsedSchema &&
+        Object.keys(context.value).length ===
+        Object.keys(parsedSchema).length;
+
+      if (isConsistent) {
+        console.log("Schema Match, using stored data"); // Avoiding data loss
+        context.setValue({
+          nonSensitiveData,
+          starter: true,
+        });
+      } else {
+        console.log("Schema Mismatch, using default data");
+        context.setValue({
+          ...context.value,
+          starter: true,
+        });
+      }
+    } catch (error) {
+      console.error("🔴 CONTEXT LOADER BOOT ERROR:", error);
       context.setValue({
         ...context.value,
         starter: true,
