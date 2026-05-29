@@ -4,9 +4,9 @@ import { getAsyncStorageValue } from "../utilsApp/utils";
 import ContextModule from "./contextModule";
 
 export default function ContextLoader() {
-  const context = useContext(ContextModule);
+  const { value, setValue } = useContext(ContextModule);
   const checkStarter = useCallback(async () => {
-    if (context.value && context.value.starter) {
+    if (value && value.starter) {
       return;
     }
     try {
@@ -14,15 +14,15 @@ export default function ContextLoader() {
       const nonSensitiveData = await getAsyncStorageValue("NONSENSITIVEDATA"); // Check if the app is started for the first time
 
       if (nonSensitiveData === null) {
-        context.setValue({ starter: true });
+        setValue({ starter: true });
         return;
       }
 
       const schema = await AsyncStorage.getItem("General");
       if (!schema) {
         console.log("No schema found, using default state");
-        context.setValue({
-          ...context.value,
+        setValue({
+          ...value,
           starter: true,
         });
         return;
@@ -31,30 +31,30 @@ export default function ContextLoader() {
       const parsedSchema = JSON.parse(schema);
       const isConsistent =
         parsedSchema &&
-        Object.keys(context.value).length ===
+        Object.keys(value).length ===
         Object.keys(parsedSchema).length;
 
       if (isConsistent) {
         console.log("Schema Match, using stored data"); // Avoiding data loss
-        context.setValue({
+        setValue({
           nonSensitiveData,
           starter: true,
         });
       } else {
         console.log("Schema Mismatch, using default data");
-        context.setValue({
-          ...context.value,
+        setValue({
+          ...value,
           starter: true,
         });
       }
     } catch (error) {
       console.error("🔴 CONTEXT LOADER BOOT ERROR:", error);
-      context.setValue({
-        ...context.value,
+      setValue({
+        ...value,
         starter: true,
       });
     }
-  }, [context]);
+  }, [setValue]);
 
   useEffect(() => {
     checkStarter();
