@@ -31,7 +31,7 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
       - name: Install Original Dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Run Update Script
         run: node scripts/update-packages.js
