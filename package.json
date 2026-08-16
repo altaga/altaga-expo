@@ -29,7 +29,7 @@
     "@react-navigation/elements": "2.9.38",
     "@react-navigation/native": "7.3.16",
     "buffer": "6.0.3",
-    "expo": "55.0.24",
+    "expo": "55.0.28",
     "expo-constants": "55.0.16",
     "expo-font": "55.0.7",
     "expo-haptics": "55.0.3",
