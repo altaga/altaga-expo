@@ -1,5 +1,6 @@
-// Dependency-free SHA-256 and HMAC-SHA256 (FIPS 180-4, RFC 2104). Runs the same
-// on native, web and the API server; React Native has no crypto.subtle.
+// Dependency-free SHA-256 and HMAC-SHA256 (FIPS 180-4, RFC 2104), shared by the
+// browser and the API server. Synchronous, and unlike crypto.subtle it also works
+// outside secure contexts (for example the dev server over http on a LAN IP).
 // Verified against RFC 4231 vectors and node:crypto in tests/security.test.mjs.
 
 const K = new Uint32Array([

@@ -17,7 +17,8 @@ function isKnownOrigin(origin) {
   return process.env.NODE_ENV !== "production" && LOCALHOST_ORIGIN.test(origin);
 }
 
-// Requests without an Origin header pass: native apps and server-side callers never send one.
+// Requests without an Origin header pass: browsers omit it on same-origin GETs, and
+// server-side callers never send it. The signature is what stops those.
 export function isAllowedOrigin(request) {
   const origin = request.headers.get("origin");
   if (!origin) return true;

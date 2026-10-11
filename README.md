@@ -1,6 +1,6 @@
 # Altaga Expo Template
 
-An ultra-minimalist, high-end Expo starting block, web first (Expo Router with server output), that also compiles for iOS and Android.
+An ultra-minimalist, high-end Expo starting block for the web (Expo Router with server output). Web only: no iOS or Android configuration.
 
 It ships the infrastructure most templates leave out, already wired and tested: public and private routes, sessions that survive Safari's storage eviction, secure storage, layered state management, and API routes behind a signed-request gate. All with no runtime dependencies beyond Expo and React Native, and a highly opinionated "Luxury Dark" aesthetic.
 
@@ -63,7 +63,7 @@ src/
 │   ├── contextLoader.js   # Restores the cache at start
 │   └── smartProvider.js   # Responsive math + desktop phone frame
 ├── utilsAPI/              # Server-only: auth, session cookie, CORS, withSecurity
-└── utilsApp/utils.js      # Secure storage (IndexedDB / Keychain) + helpers
+└── utilsApp/utils.js      # Secure storage (IndexedDB) + helpers
 ```
 
 ---
@@ -127,7 +127,7 @@ export default function Profile() {
 ```
 
 ### 4. Sessions That Survive Safari
-`useSession().signIn(credentials)` calls `/api/signIn`. The session is stored in IndexedDB (Keychain/Keystore on native), and the server also sets a signed `HttpOnly` cookie. Safari deletes a site's storage after 7 days without a visit, but not that cookie, so the app restores the session from it at start. Updates never sign anyone out: the session lives apart from the cache.
+`useSession().signIn(credentials)` calls `/api/signIn`. The session is stored in IndexedDB, and the server also sets a signed `HttpOnly` cookie. Safari deletes a site's storage after 7 days without a visit, but not that cookie, so the app restores the session from it at start. Updates never sign anyone out: the session lives apart from the cache.
 
 Replace `src/utilsAPI/authenticate.js` with your real authentication before shipping.
 

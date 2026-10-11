@@ -7,18 +7,6 @@
     "icon": "./src/assets/logo.png",
     "scheme": "altagaexpo",
     "userInterfaceStyle": "automatic",
-    "ios": {
-      "supportsTablet": true
-    },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./src/assets/logo.png",
-        "backgroundImage": "./src/assets/logo.png",
-        "monochromeImage": "./src/assets/logo.png"
-      },
-      "predictiveBackGestureEnabled": false
-    },
     "web": {
       "output": "server",
       "favicon": "./src/assets/favicon.png"
@@ -42,7 +30,6 @@
           }
         }
       ],
-      "expo-secure-store",
       "expo-font",
       "expo-image",
       "expo-web-browser"

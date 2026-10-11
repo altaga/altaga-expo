@@ -6,18 +6,18 @@ from it. Read it before changing anything under `src/app/+middleware.js`,
 
 ## 1. What this is
 
-An Expo Router app template, **web first**, with `"web": {"output": "server"}`:
+An Expo Router app template, **web only**, with `"web": {"output": "server"}`:
 the web build ships a client bundle and a server bundle (API routes and
 middleware), so it needs a server-aware host (EAS Hosting, `npx expo serve`).
-Plain static hosting will not work. Native builds compile from the same code,
-but only the web path is tested.
+Plain static hosting will not work. iOS and Android are out of scope: there is
+no native configuration or native code path, so don't add any.
 
 What it gives a new project, already wired and tested:
 
 - Public and private routes, guarded by the session.
 - Sessions that survive reloads, app updates and Safari's storage eviction.
 - App state in React Context, with a disposable versioned cache.
-- Secure storage: IndexedDB on web, Keychain/Keystore on native.
+- Secure storage in IndexedDB, apart from the cache.
 - API routes behind one middleware gate: HMAC request signing plus an Origin check.
 - Per-user authorization in API routes from an HttpOnly session cookie.
 - No runtime dependencies beyond Expo/React Native. HMAC-SHA256 is in
@@ -82,7 +82,7 @@ tests/security.test.mjs     node --test suite (npm test)
 | Layer | Where | Survives | Use for |
 |---|---|---|---|
 | Session | `sessionProvider.js` → secure record `Session` + HttpOnly cookie | reloads, updates, cache resets, Safari eviction (via cookie) | who is signed in |
-| Secure storage | `get/setEncryptedStorageValue` (IndexedDB on web, SecureStore on native) | reloads, updates | credentials, tokens, PINs |
+| Secure storage | `get/setEncryptedStorageValue` (IndexedDB) | reloads, updates | credentials, tokens, PINs |
 | App state | `ContextModule` (`setValue`) | nothing (memory) | UI and session-scoped data |
 | Cache | `setPersistentValue` → `core/cache.js` (AsyncStorage = localStorage on web) | reloads, until `CACHE_VERSION` changes | data that can be fetched again |
 
@@ -128,7 +128,7 @@ Rules:
 - **Never use Origin or User-Agent as authentication.** Both are strings any
   client can set. Origin only stops other websites' scripts in a real browser.
 - Call your own API only through `signedApiGet` / `signedApiPost` (`core/api.js`).
-  On web the requests are same-origin; native builds need `EXPO_PUBLIC_API_URL`.
+  Requests are same-origin.
 - **The signature proves the call came from the app, not who the user is.**
   The signing secret ships in the web bundle by design, so a determined attacker
   can extract it. For anything user-specific, read the user with
@@ -141,7 +141,7 @@ Rules:
   status and headers (including several `Set-Cookie`), and turns a throw into a
   generic 500 without details.
 - Secrets: anything prefixed `EXPO_PUBLIC_` is inlined into the client bundle.
-  Only `EXPO_PUBLIC_API_SIGNING_SECRET` and `EXPO_PUBLIC_API_URL` may be public.
+  Only `EXPO_PUBLIC_API_SIGNING_SECRET` may be public.
   Server secrets (`SESSION_COOKIE_SECRET`, backend API keys) never get the prefix
   and are read only in `src/utilsAPI/` and `src/app/api/`.
 - `DEMO_AUTH_ENABLED` is ignored in production builds (`NODE_ENV=production`),

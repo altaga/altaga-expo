@@ -1,5 +1,4 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as EncryptedStorage from "expo-secure-store";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Dimensions, PixelRatio, Platform } from "react-native";
 
@@ -27,10 +26,9 @@ export async function setAsyncStorageValue(value, storage = "General") {
   );
 }
 
-// Secure records (credentials, session user). Native: expo-secure-store. Web:
-// expo-secure-store has no implementation, so the record lives in IndexedDB, which
-// Safari ITP does not evict like localStorage. localStorage is only a fallback for
-// browsers that block IndexedDB. Writes never fall back to plaintext AsyncStorage.
+// Secure records (credentials, session user) live in IndexedDB, kept apart from the
+// AsyncStorage cache. localStorage is only a fallback for browsers that block
+// IndexedDB. Safari can still evict both; the session cookie covers that.
 const IDB_NAME = "SecureStore";
 const IDB_STORE = "kv";
 const webFallbackKey = (storage) => `${storage}SecureFallback`;
@@ -65,9 +63,6 @@ async function idbTransaction(mode, operation) {
 }
 
 async function readSecureRecord(storage) {
-  if (Platform.OS !== "web") {
-    return JSON.parse((await EncryptedStorage.getItem(storage)) ?? "null");
-  }
   try {
     const record = await idbTransaction("readonly", (store) => store.get(storage));
     if (record) return record;
@@ -78,10 +73,6 @@ async function readSecureRecord(storage) {
 }
 
 async function writeSecureRecord(storage, record) {
-  if (Platform.OS !== "web") {
-    await EncryptedStorage.setItem(storage, JSON.stringify(record));
-    return;
-  }
   try {
     await idbTransaction("readwrite", (store) => store.put(record, storage));
     localStorage.removeItem(webFallbackKey(storage));
@@ -106,10 +97,6 @@ export async function setEncryptedStorageValue(value, storage = "General") {
 }
 
 export async function clearSecureStorage(storage) {
-  if (Platform.OS !== "web") {
-    await EncryptedStorage.deleteItemAsync(storage);
-    return;
-  }
   localStorage.removeItem(webFallbackKey(storage));
   await idbTransaction("readwrite", (store) => store.delete(storage)).catch(() => {});
 }

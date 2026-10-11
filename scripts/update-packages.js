@@ -78,7 +78,6 @@ const EXPO_SDK_55_MAP = {
   "expo-image": "55.0.9",
   "expo-linking": "55.0.14",
   "expo-router": "55.0.13",
-  "expo-secure-store": "55.0.13",
   "expo-splash-screen": "55.0.19",
   "expo-status-bar": "55.0.5",
   "expo-symbols": "55.0.7",
