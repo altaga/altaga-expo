@@ -1,5 +1,20 @@
+# npm ignores .gitignore when this file exists, so every secret rule must be repeated here.
 .expo/
 .vscode/
 node_modules/
+dist/
+web-build/
 .npmignore
-# .gitignore is usually fine to keep, but keeping this explicit ensures safety
+
+# env files: only the names template is published
+.env
+.env.*
+!.env.example
+
+# keys and certificates
+*.pem
+*.key
+*.p8
+*.p12
+*.jks
+*.mobileprovision

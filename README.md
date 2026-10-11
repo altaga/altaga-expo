@@ -1,8 +1,10 @@
 # Altaga Expo Template
 
-An ultra-minimalist, high-end Expo starting block designed for rapid cross-platform development (Web, iOS, Android). 
+An ultra-minimalist, high-end Expo starting block, web first (Expo Router with server output), that also compiles for iOS and Android.
 
-This template strips away the bloat of standard boilerplates while providing robust, hidden infrastructure. It comes pre-configured with reactive styling math, cross-platform secure storage fail-safes, universal state management, and a highly opinionated "Luxury Dark" minimalist aesthetic out of the box.
+It ships the infrastructure most templates leave out, already wired and tested: public and private routes, sessions that survive Safari's storage eviction, secure storage, layered state management, and API routes behind a signed-request gate. All with no runtime dependencies beyond Expo and React Native, and a highly opinionated "Luxury Dark" aesthetic.
+
+**Agents and contributors: read [AGENTS.md](./AGENTS.md) first.** It holds the rules this README only summarizes.
 
 ---
 
@@ -20,11 +22,20 @@ Most modern apps suffer from the "AI Look"—soft glows, rounded generic cards, 
    ```bash
    npm install
    ```
-2. **Start the Development Server**
+2. **Create your `.env`** (git-ignored) from the template and fill in the secrets. The file explains how to generate them:
    ```bash
-   npm run start
+   cp .env.example .env
    ```
-   *Note: Web, iOS, and Android builds are pre-configured. Use `npm run web` to start the web compiler specifically.*
+   For a local demo, set `DEMO_AUTH_ENABLED=true`. The sign-in screen then accepts any name. Production builds ignore that flag.
+3. **Start the web dev server**
+   ```bash
+   npm run web
+   ```
+4. **Check everything**
+   ```bash
+   npm test          # security suite
+   npm run webbuild  # production web build
+   ```
 
 ---
 
@@ -32,24 +43,27 @@ Most modern apps suffer from the "AI Look"—soft glows, rounded generic cards, 
 
 ```text
 src/
-├── app/                  # Expo Router (File-based navigation)
-│   ├── _layout.js        # Wraps the app in Context & Providers
-│   ├── index.js          # Entry Router / Splash Logic
-│   └── (screens)/        # Your core application screens go here
-├── assets/               # Template imagery and icons
-├── core/                 # The aesthetic engine
-│   └── styles.js         # Reactive GlobalStyles and design tokens
-├── hocs/                 
-│   └── useHOCS.js        # High-Order Components for legacy Class compatibility
-├── providers/            # Infrastructure
-│   ├── contextModule.js  # Global State (React Context API)
-│   ├── contextLoader.js  # Loader logic tied to Global State
-│   └── smartProvider.js  # Responsive math calculation logic
-├── utilsAPI/             # Backend / Middlewares
-│   ├── corsHelper.js     # Configures Cross-Origin Resource Sharing
-│   └── withSecurity.js   # Middleware wrapper for protected API routes
-└── utilsApp/             
-    └── utils.js          # Cross-platform secure storage and mathematical utilities
+├── app/
+│   ├── _layout.js         # Providers + guarded navigator (public vs private)
+│   ├── +middleware.js     # The single access gate for every /api route
+│   ├── (public)/          # Signed-out screens (sign-in.js)
+│   ├── (private)/         # Signed-in screens (index.js is "/")
+│   └── api/               # session, signIn, signOut, me (private), hello
+├── components/            # splashView.js
+├── core/
+│   ├── api.js             # signedApiGet / signedApiPost
+│   ├── cache.js           # Versioned, disposable app cache
+│   ├── hmac.js            # Dependency-free SHA-256 / HMAC-SHA256
+│   ├── requestSigning.js  # Request signatures (client signs, middleware verifies)
+│   └── styles.js          # Reactive GlobalStyles and design tokens
+├── hocs/useHOCS.js        # Hooks for legacy class components
+├── providers/
+│   ├── sessionProvider.js # useSession(): status, user, signIn, signOut
+│   ├── contextModule.js   # App state (React Context)
+│   ├── contextLoader.js   # Restores the cache at start
+│   └── smartProvider.js   # Responsive math + desktop phone frame
+├── utilsAPI/              # Server-only: auth, session cookie, CORS, withSecurity
+└── utilsApp/utils.js      # Secure storage (IndexedDB / Keychain) + helpers
 ```
 
 ---
@@ -100,58 +114,61 @@ export const cardColor = "#1C1C1E";       // Elevated surface
 export const accentColor = "#D4AF37";     // Change to your brand color
 ```
 
-### 3. Bulletproof Cross-Platform Storage
-Standard implementations of `expo-secure-store` immediately crash when compiled for the Web. This template includes a wrapper in `utilsApp/utils.js` that catches this crash automatically.
+### 3. Public and Private Routes
+Put signed-out screens in `src/app/(public)/` and signed-in screens in `src/app/(private)/`. The root layout shows only the side that matches the session, and a splash while it loads.
 
-**Storing Encrypted Session Data (Works on Web & Native!):**
 ```javascript
-import { setEncryptedStorageValue, getEncryptedStorageValue } from "../../utilsApp/utils";
-
-async function loginUser(token) {
-  // On iOS/Android: This saves to the Keychain/Keystore.
-  // On Web: This cleanly catches the error and saves to AsyncStorage.
-  await setEncryptedStorageValue({ authToken: token }, "UserSession");
-}
-
-async function checkAuth() {
-  const token = await getEncryptedStorageValue("authToken", "UserSession");
-  if (token) console.log("User is logged in!");
-}
-```
-
-### 4. Global State (Context API)
-Don't reach for Redux immediately. This template comes with `ContextProvider` pre-installed inside `_layout.js`.
-
-**Accessing State:**
-```javascript
-import { Context } from "../../providers/contextModule";
-import { useContext } from "react";
+import { useSession } from "../../providers/sessionProvider";
 
 export default function Profile() {
-  // Access global variables seamlessly across the entire app
-  const { value } = useContext(Context);
-  const user = value.userConfig;
-
-  // You can also use the built-in setState: value.setUserConfig(newUser)
+  const { user, signOut } = useSession();
+  // ...
 }
 ```
 
-### 5. Writing Secure API Routes (Expo Web)
-If you utilize Expo Router API logic (the `+api.js` files), you must manage CORS and Security for Web builds. This template provides a pre-built wrapper.
+### 4. Sessions That Survive Safari
+`useSession().signIn(credentials)` calls `/api/signIn`. The session is stored in IndexedDB (Keychain/Keystore on native), and the server also sets a signed `HttpOnly` cookie. Safari deletes a site's storage after 7 days without a visit, but not that cookie, so the app restores the session from it at start. Updates never sign anyone out: the session lives apart from the cache.
+
+Replace `src/utilsAPI/authenticate.js` with your real authentication before shipping.
+
+### 5. State Management
+| Need | Use |
+|---|---|
+| Who is signed in | `useSession()` |
+| Secrets, tokens | `setEncryptedStorageValue` / `getEncryptedStorageValue` |
+| In-memory app state | `const { value, setValue } = useContext(ContextModule)` |
+| State restored on next start | `setPersistentValue({ ... })` (versioned cache, may be discarded) |
 
 ```javascript
-// src/app/api/secureData+api.js
-import { withSecurity } from "../../utilsAPI/withSecurity";
+import { useContext } from "react";
+import ContextModule from "../../providers/contextModule";
 
-async function handler(request) {
-  return Response.json({ internalData: "Top Secret" });
+export default function Settings() {
+  const { value, setPersistentValue } = useContext(ContextModule);
+  return /* ... */ setPersistentValue({ theme: "dark" });
 }
-
-// Wrapping the handler automatically injects CORS headers and Error catching
-export const GET = withSecurity(handler);
 ```
 
-### 6. Legacy Support (HOCs)
+`setEncryptedStorageValue` throws if it cannot store the value. It never falls back to plaintext storage.
+
+### 6. Writing Secure API Routes
+Every `/api/*` route is protected by `src/app/+middleware.js`: requests need a valid HMAC signature and an allowed Origin. Call your routes with `signedApiGet` / `signedApiPost` from `src/core/api.js`. For user-specific data, read the user from the session cookie:
+
+```javascript
+// src/app/api/orders+api.js
+import { sessionUser } from "../../utilsAPI/sessionCookie";
+import { withSecurity } from "../../utilsAPI/withSecurity";
+
+export const GET = withSecurity(async (request) => {
+  const user = sessionUser(request);
+  if (!user) return Response.json({ error: "Not signed in" }, { status: 401 });
+  return Response.json({ orders: [] });
+});
+```
+
+The signing secret is in the web bundle by design: the signature stops scripts and scanners, not a determined attacker. That is why authorization must come from the session cookie.
+
+### 7. Legacy Support (HOCs)
 For teams migrating older React Class Components, the `useHOCS` middleware is provided. Wrap any old class component in `useHOCS` to instantly give it access to Expo Router's `useNavigation` and `useGlobalSearchParams` hooks.
 
 ---
@@ -159,3 +176,4 @@ For teams migrating older React Class Components, the `useHOCS` middleware is pr
 ## ⚖️ Final Notes
 - **React Compiler Enabled:** This project opts into React 19's Compiler in `app.json` for massive performance gains. Write your logic naturally; you generally do not need `useMemo` or `useCallback`.
 - **Typing:** Typed Routes are enabled by default, ensuring navigation integrity across large routing stacks.
+- **Secrets:** only `.env.example` is committed or published. `.env` is ignored by both git and npm.

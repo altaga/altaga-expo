@@ -1,52 +1,42 @@
 import React from "react";
+import { clearCache, writeCache } from "../core/cache";
 
+// App state: everything that is not the session. Read AGENTS.md ("State").
+//   setValue           in memory only
+//   setPersistentValue in memory and in the cache (restored on next start)
+//   resetValue         back to defaults and cache cleared (used on sign-out)
 const ContextModule = React.createContext();
 
+const DEFAULT_VALUE = {
+  hydrated: false,
+  // Add your own defaults here.
+};
+
 class ContextProvider extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      value: {
-        // Use Your own default values
-      },
-    };
-  }
+  state = { value: DEFAULT_VALUE };
 
   setValue = (value, then = () => {}) => {
-    this.setState(
-      {
-        value: {
-          ...this.state.value,
-          ...value,
-        },
-      },
-      () => then(),
-    );
+    this.setState((previous) => ({ value: { ...previous.value, ...value } }), then);
   };
 
-  setValueAsync = async (value, then = () => {}) => {
-    await new Promise((resolve) =>
-      this.setState(
-        {
-          value: {
-            ...this.state.value,
-            ...value,
-          },
-        },
-        () => resolve(),
-      ),
-    );
-    then();
+  setValueAsync = (value) => new Promise((resolve) => this.setValue(value, resolve));
+
+  setPersistentValue = async (value) => {
+    this.setValue(value);
+    await writeCache(value);
+  };
+
+  resetValue = async () => {
+    await clearCache().catch(() => {});
+    this.setState({ value: { ...DEFAULT_VALUE, hydrated: true } });
   };
 
   render() {
-    const { children } = this.props;
     const { value } = this.state;
-    const { setValue, setValueAsync } = this;
-
+    const { setValue, setValueAsync, setPersistentValue, resetValue } = this;
     return (
-      <ContextModule.Provider value={{ value, setValue, setValueAsync }}>
-        {children}
+      <ContextModule.Provider value={{ value, setValue, setValueAsync, setPersistentValue, resetValue }}>
+        {this.props.children}
       </ContextModule.Provider>
     );
   }

@@ -27,65 +27,100 @@ export async function setAsyncStorageValue(value, storage = "General") {
   );
 }
 
-export async function getEncryptedStorageValue(label, storage = "General") {
+// Secure records (credentials, session user). Native: expo-secure-store. Web:
+// expo-secure-store has no implementation, so the record lives in IndexedDB, which
+// Safari ITP does not evict like localStorage. localStorage is only a fallback for
+// browsers that block IndexedDB. Writes never fall back to plaintext AsyncStorage.
+const IDB_NAME = "SecureStore";
+const IDB_STORE = "kv";
+const webFallbackKey = (storage) => `${storage}SecureFallback`;
+
+function openSecureDb() {
+  return new Promise((resolve, reject) => {
+    if (typeof indexedDB === "undefined") {
+      reject(new Error("IndexedDB unavailable"));
+      return;
+    }
+    const request = indexedDB.open(IDB_NAME, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore(IDB_STORE);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function idbTransaction(mode, operation) {
+  const db = await openSecureDb();
   try {
-    const session = await EncryptedStorage.getItem(storage);
-    if (label in JSON.parse(session)) {
-      return JSON.parse(session)[label];
-    } else {
-      return null;
-    }
-  } catch {
-    try {
-      const session = await AsyncStorage.getItem(storage + "Backup");
-      if (label in JSON.parse(session)) {
-        return JSON.parse(session)[label];
-      } else {
-        return null;
-      }
-    } catch {
-      return null;
-    }
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, mode);
+      const request = operation(tx.objectStore(IDB_STORE));
+      // Resolve on commit, not on request success, so the write is durable.
+      tx.oncomplete = () => resolve(request.result);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  } finally {
+    db.close();
   }
 }
 
-export async function setEncryptedStorageValue(value, storage = "General") {
-  try {
-    const session = await EncryptedStorage.getItem(storage);
-    await EncryptedStorage.setItem(
-      storage,
-      JSON.stringify({
-        ...JSON.parse(session),
-        ...value,
-      }),
-    );
-  } catch {
-    const session = await AsyncStorage.getItem(storage + "Backup");
-    await AsyncStorage.setItem(
-      storage + "Backup",
-      JSON.stringify({
-        ...JSON.parse(session),
-        ...value,
-      }),
-    );
+async function readSecureRecord(storage) {
+  if (Platform.OS !== "web") {
+    return JSON.parse((await EncryptedStorage.getItem(storage)) ?? "null");
   }
+  try {
+    const record = await idbTransaction("readonly", (store) => store.get(storage));
+    if (record) return record;
+  } catch {
+    // IndexedDB blocked: read the fallback below.
+  }
+  return JSON.parse(localStorage.getItem(webFallbackKey(storage)) ?? "null");
+}
+
+async function writeSecureRecord(storage, record) {
+  if (Platform.OS !== "web") {
+    await EncryptedStorage.setItem(storage, JSON.stringify(record));
+    return;
+  }
+  try {
+    await idbTransaction("readwrite", (store) => store.put(record, storage));
+    localStorage.removeItem(webFallbackKey(storage));
+  } catch {
+    localStorage.setItem(webFallbackKey(storage), JSON.stringify(record));
+  }
+}
+
+export async function getEncryptedStorageValue(label, storage = "General") {
+  try {
+    const record = await readSecureRecord(storage);
+    return record && label in record ? record[label] : null;
+  } catch {
+    return null;
+  }
+}
+
+// Throws on failure. A credential that was not stored must not look stored.
+export async function setEncryptedStorageValue(value, storage = "General") {
+  const existing = (await readSecureRecord(storage)) ?? {};
+  await writeSecureRecord(storage, { ...existing, ...value });
+}
+
+export async function clearSecureStorage(storage) {
+  if (Platform.OS !== "web") {
+    await EncryptedStorage.deleteItemAsync(storage);
+    return;
+  }
+  localStorage.removeItem(webFallbackKey(storage));
+  await idbTransaction("readwrite", (store) => store.delete(storage)).catch(() => {});
 }
 
 export async function nukeStorage(storage = "General") {
   try {
     await AsyncStorage.clear();
-    await clearSecureStorage(storage);
   } catch {
     console.log("Failed to clear AsyncStorage");
   }
-}
-
-export async function clearSecureStorage(storage) {
-  try {
-    await EncryptedStorage.deleteItemAsync(storage);
-  } catch {
-    console.log("Failed to clear EncryptedStorage");
-  }
+  await clearSecureStorage(storage);
 }
 
 export function epsilonRound(num, zeros = 4) {
